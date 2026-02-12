@@ -31,6 +31,23 @@ DEFAULT_RESPONSE_FORMAT = "diarized_json"
 DEFAULT_CHUNKING_STRATEGY = "auto"
 DEFAULT_SUMMARY_MODEL = "gpt-4.1-mini"
 
+# Pricing snapshot (USD) based on OpenAI pricing page as of 2026-02-12.
+# Update these values over time as pricing changes.
+TRANSCRIPTION_COST_PER_MINUTE_USD: Dict[str, float] = {
+    "gpt-4o-transcribe-diarize": 0.006,
+    "gpt-4o-transcribe": 0.006,
+    "gpt-4o-mini-transcribe": 0.003,
+}
+
+SUMMARY_COST_PER_MILLION_TOKENS_USD: Dict[str, Dict[str, float]] = {
+    "gpt-5": {"input": 1.25, "output": 10.00},
+    "gpt-5-mini": {"input": 0.25, "output": 2.00},
+    "gpt-5-nano": {"input": 0.05, "output": 0.40},
+    "gpt-4.1": {"input": 2.00, "output": 8.00},
+    "gpt-4.1-mini": {"input": 0.40, "output": 1.60},
+    "gpt-4o-mini": {"input": 0.15, "output": 0.60},
+}
+
 
 @dataclass
 class ChunkInfo:
@@ -166,6 +183,44 @@ def ffprobe_duration_seconds(path: Path) -> float:
     if value <= 0:
         raise RuntimeError(f"Invalid duration from ffprobe: {value}")
     return value
+
+
+def ffprobe_duration_seconds_safe(path: Path) -> Optional[float]:
+    if shutil.which("ffprobe") is None:
+        return None
+    try:
+        return ffprobe_duration_seconds(path)
+    except Exception:
+        return None
+
+
+def format_usd(amount: Optional[float]) -> str:
+    if amount is None:
+        return "N/A"
+    return f"${amount:.6f}"
+
+
+def estimate_transcription_cost_usd(model: str, duration_seconds: Optional[float]) -> Optional[float]:
+    if duration_seconds is None:
+        return None
+    per_minute = TRANSCRIPTION_COST_PER_MINUTE_USD.get(model)
+    if per_minute is None:
+        return None
+    return (duration_seconds / 60.0) * per_minute
+
+
+def estimate_summary_cost_usd(
+    model: str,
+    input_tokens: int,
+    output_tokens: int,
+) -> Optional[float]:
+    pricing = SUMMARY_COST_PER_MILLION_TOKENS_USD.get(model)
+    if pricing is None:
+        return None
+    return (
+        (input_tokens / 1_000_000.0) * pricing["input"]
+        + (output_tokens / 1_000_000.0) * pricing["output"]
+    )
 
 
 def estimate_chunk_seconds(
@@ -388,6 +443,36 @@ def write_summary_markdown(path: Path, summary_text: str, metadata: Dict[str, st
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def write_cost_markdown(path: Path, cost_data: Dict[str, Any]) -> None:
+    lines = [
+        "# API Cost Estimate",
+        "",
+        "- Estimated from local pricing snapshot and runtime usage.",
+        "- Currency: `USD`",
+        "",
+        "## Breakdown",
+        "",
+        f"- **Transcription Model:** `{cost_data.get('transcription_model', 'N/A')}`",
+        f"- **Transcription Duration (seconds):** `{cost_data.get('transcription_duration_seconds', 'N/A')}`",
+        f"- **Estimated Transcription Cost:** `{format_usd(cost_data.get('transcription_cost_usd'))}`",
+        "",
+        f"- **Summary Model:** `{cost_data.get('summary_model', 'N/A')}`",
+        f"- **Summary Input Tokens:** `{cost_data.get('summary_input_tokens', 0)}`",
+        f"- **Summary Output Tokens:** `{cost_data.get('summary_output_tokens', 0)}`",
+        f"- **Estimated Summary Cost:** `{format_usd(cost_data.get('summary_cost_usd'))}`",
+        "",
+        f"- **Estimated Total Cost:** `{format_usd(cost_data.get('total_cost_usd'))}`",
+    ]
+    if cost_data.get("is_partial"):
+        lines.extend(
+            [
+                "",
+                "> Note: estimate is partial because pricing or usage details were unavailable for one or more steps.",
+            ]
+        )
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def import_openai_client():
     try:
         from openai import OpenAI
@@ -444,12 +529,63 @@ def _extract_output_text(result: Any) -> str:
     return ""
 
 
+def _extract_usage_tokens(result: Any) -> Dict[str, int]:
+    usage_payload: Any = getattr(result, "usage", None)
+    if hasattr(usage_payload, "model_dump"):
+        usage_payload = usage_payload.model_dump()
+    if not isinstance(usage_payload, dict):
+        payload = to_dict(result)
+        usage_payload = payload.get("usage")
+    if not isinstance(usage_payload, dict):
+        return {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+            "available": 0,
+        }
+
+    def _as_int(value: Any) -> int:
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return 0
+        return max(parsed, 0)
+
+    input_tokens = _as_int(
+        usage_payload.get(
+            "input_tokens",
+            usage_payload.get("prompt_tokens", usage_payload.get("input_token_count")),
+        )
+    )
+    output_tokens = _as_int(
+        usage_payload.get(
+            "output_tokens",
+            usage_payload.get(
+                "completion_tokens",
+                usage_payload.get("output_token_count"),
+            ),
+        )
+    )
+    total_tokens = _as_int(
+        usage_payload.get(
+            "total_tokens",
+            input_tokens + output_tokens,
+        )
+    )
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": total_tokens,
+        "available": 1,
+    }
+
+
 def generate_summary(
     client: Any,
     model: str,
     summary_prompt: str,
     transcript_text: str,
-) -> str:
+) -> tuple[str, Dict[str, int]]:
     result = client.responses.create(
         model=model,
         input=[
@@ -470,7 +606,7 @@ def generate_summary(
     summary = _extract_output_text(result).strip()
     if not summary:
         die("Summary generation succeeded but returned empty text.")
-    return summary
+    return summary, _extract_usage_tokens(result)
 
 
 def build_output_dir(output_root: Path, input_path: Path) -> Path:
@@ -579,6 +715,12 @@ def transcribe_mp3_file(
         max_chunk_seconds=max_chunk_seconds,
     )
     total_chunks = len(chunks)
+    chunk_durations = [ffprobe_duration_seconds_safe(chunk.path) for chunk in chunks]
+    transcription_duration_seconds: Optional[float]
+    if all(duration is not None for duration in chunk_durations):
+        transcription_duration_seconds = sum(duration for duration in chunk_durations if duration is not None)
+    else:
+        transcription_duration_seconds = None
     emit(f"Prepared {total_chunks} chunk(s) for processing.", 0.12)
 
     total_steps = (2 * total_chunks) + 2 + (1 if generate_summary_file else 0)
@@ -647,6 +789,12 @@ def transcribe_mp3_file(
 
     summary_path: Optional[Path] = None
     summary_text: Optional[str] = None
+    summary_usage: Dict[str, int] = {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "available": 0,
+    }
     if generate_summary_file:
         summary_prompt = load_summary_prompt_from_settings(settings)
         if not summary_prompt:
@@ -656,7 +804,7 @@ def transcribe_mp3_file(
             )
         transcript_text = transcript_path.read_text(encoding="utf-8")
         advance_progress("Generating summary from transcript...")
-        summary_text = generate_summary(
+        summary_text, summary_usage = generate_summary(
             client=client,
             model=summary_model,
             summary_prompt=summary_prompt,
@@ -673,12 +821,59 @@ def transcribe_mp3_file(
             },
         )
 
+    transcription_cost_usd = estimate_transcription_cost_usd(
+        model=model,
+        duration_seconds=transcription_duration_seconds,
+    )
+    summary_cost_usd: Optional[float] = None
+    if generate_summary_file:
+        if summary_usage.get("available", 0) == 1:
+            summary_cost_usd = estimate_summary_cost_usd(
+                model=summary_model,
+                input_tokens=summary_usage.get("input_tokens", 0),
+                output_tokens=summary_usage.get("output_tokens", 0),
+            )
+
+    known_costs = [
+        value for value in (transcription_cost_usd, summary_cost_usd) if value is not None
+    ]
+    total_cost_usd = sum(known_costs) if known_costs else None
+    expected_components = 2 if generate_summary_file else 1
+    is_partial_cost = len(known_costs) < expected_components
+
+    cost_path = output_dir / f"{input_path.stem}.cost.md"
+    write_cost_markdown(
+        path=cost_path,
+        cost_data={
+            "transcription_model": model,
+            "transcription_duration_seconds": (
+                round(transcription_duration_seconds, 3)
+                if transcription_duration_seconds is not None
+                else "N/A"
+            ),
+            "transcription_cost_usd": transcription_cost_usd,
+            "summary_model": summary_model if generate_summary_file else "N/A",
+            "summary_input_tokens": summary_usage.get("input_tokens", 0),
+            "summary_output_tokens": summary_usage.get("output_tokens", 0),
+            "summary_cost_usd": summary_cost_usd,
+            "total_cost_usd": total_cost_usd,
+            "is_partial": is_partial_cost,
+        },
+    )
+
     advance_progress("Finalizing outputs...",)
 
     emit(f"Output directory: {output_dir}", 1.0)
     emit(f"Copied input audio: {copied_audio}", 1.0)
     emit(f"Transcript markdown: {transcript_path}", 1.0)
     emit(f"Transcript json: {json_path}", 1.0)
+    emit(f"Cost markdown: {cost_path}", 1.0)
+    emit(f"Estimated transcription cost (USD): {format_usd(transcription_cost_usd)}", 1.0)
+    if generate_summary_file:
+        emit(f"Estimated summary cost (USD): {format_usd(summary_cost_usd)}", 1.0)
+    emit(f"Estimated total cost (USD): {format_usd(total_cost_usd)}", 1.0)
+    if is_partial_cost:
+        emit("Cost estimate is partial due to missing pricing or usage data.", 1.0)
     if summary_path is not None:
         emit(f"Summary markdown: {summary_path}", 1.0)
 
@@ -688,10 +883,17 @@ def transcribe_mp3_file(
         "transcript_path": str(transcript_path),
         "transcript_json_path": str(json_path),
         "summary_path": str(summary_path) if summary_path is not None else None,
+        "cost_path": str(cost_path),
         "transcript_text": transcript_path.read_text(encoding="utf-8"),
         "summary_text": summary_text,
         "chunk_count": total_chunks,
         "source_file": input_path.name,
+        "transcription_duration_seconds": transcription_duration_seconds,
+        "cost_estimate_usd_transcription": transcription_cost_usd,
+        "cost_estimate_usd_summary": summary_cost_usd,
+        "cost_estimate_usd_total": total_cost_usd,
+        "cost_estimate_is_partial": is_partial_cost,
+        "summary_usage": summary_usage,
     }
 
 

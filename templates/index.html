@@ -35,7 +35,7 @@
 
           <div class="controls">
             <label>
-              <span>Transcribe Model</span>
+              <span>Transcribe Model (Most Powerful: {{ powerful_transcribe_model }})</span>
               <select name="model">
                 {% for item in transcribe_models %}
                 <option value="{{ item }}" {% if item == default_model %}selected{% endif %}>{{ item }}</option>
@@ -43,7 +43,7 @@
               </select>
             </label>
             <label>
-              <span>Summary Model</span>
+              <span>Summary Model (Latest & Most Powerful: {{ powerful_summary_model }})</span>
               <select name="summary_model">
                 {% for item in summary_models %}
                 <option value="{{ item }}" {% if item == default_summary_model %}selected{% endif %}>{{ item }}</option>
@@ -101,6 +101,8 @@
           <p><strong>Output Directory:</strong> <span id="output-dir"></span></p>
           <p><strong>Transcript Markdown:</strong> <span id="transcript-path"></span></p>
           <p><strong>Summary Markdown:</strong> <span id="summary-path"></span></p>
+          <p><strong>Cost Markdown:</strong> <span id="cost-path"></span></p>
+          <p><strong>Estimated Total Cost (USD):</strong> <span id="cost-total"></span></p>
         </div>
 
         <div id="download-panel" class="downloads hidden">
@@ -108,6 +110,7 @@
           <a id="download-transcript-txt" class="download-btn" href="#" download>Download Transcript Markdown</a>
           <a id="download-transcript-json" class="download-btn" href="#" download>Download Transcript JSON</a>
           <a id="download-summary-txt" class="download-btn" href="#" download>Download Summary Markdown</a>
+          <a id="download-cost-md" class="download-btn" href="#" download>Download Cost Markdown</a>
         </div>
       </section>
     </main>

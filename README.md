@@ -9,6 +9,7 @@ Transcribe MP3 audio with speaker labels and optional AI summary generation.
 - Progress updates in CLI and web UI.
 - Summary generation from transcript using a custom prompt.
 - Markdown output files with structured formatting.
+- Estimated API cost breakdown per run.
 - Web UI with upload, live progress, tabs, and downloadable artifacts.
 
 ## Requirements
@@ -94,6 +95,7 @@ UI includes:
 
 Supported `artifact` values:
 - `input_audio`
+- `cost_md`
 - `transcript_md`
 - `transcript_json`
 - `summary_md`
@@ -108,9 +110,19 @@ output-<input-stem>-<unixtime>/
 
 Typical files:
 - `<name>.mp3`
+- `<name>.cost.md`
 - `<name>.transcript.md`
 - `<name>.transcript.json`
 - `<name>.summary.md` (if enabled)
+
+## Cost Estimation
+
+- The app estimates execution cost and writes it to `<name>.cost.md`.
+- UI also shows estimated total cost.
+- Cost uses:
+  - transcription model minute rates
+  - summary model token rates + response token usage
+- Pricing is based on a local snapshot and may change over time.
 
 ## Troubleshooting
 

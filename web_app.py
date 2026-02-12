@@ -13,8 +13,6 @@ from flask import Flask, jsonify, render_template, request, send_file
 from werkzeug.utils import secure_filename
 
 from transcribe_mp3 import (
-    DEFAULT_MODEL,
-    DEFAULT_SUMMARY_MODEL,
     MAX_CHUNK_SECONDS,
     transcribe_mp3_file,
 )
@@ -26,14 +24,17 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config["MAX_CONTENT_LENGTH"] = 512 * 1024 * 1024
 
+POWERFUL_TRANSCRIBE_MODEL = "gpt-4o-transcribe-diarize"
+POWERFUL_SUMMARY_MODEL = "gpt-5"
+
 TRANSCRIBE_MODELS = [
-    "gpt-4o-transcribe-diarize",
+    POWERFUL_TRANSCRIBE_MODEL,
     "gpt-4o-mini-transcribe",
     "gpt-4o-transcribe",
 ]
 
 SUMMARY_MODELS = [
-    "gpt-5",
+    POWERFUL_SUMMARY_MODEL,
     "gpt-5-mini",
     "gpt-5-nano",
     "gpt-4.1-mini",
@@ -190,6 +191,7 @@ def _artifact_entry(job: Dict[str, Any], artifact: str) -> tuple[str | None, str
 
     mapping = {
         "input_audio": "copied_audio",
+        "cost_md": "cost_path",
         "transcript_md": "transcript_path",
         "transcript_txt": "transcript_path",
         "transcript_json": "transcript_json_path",
@@ -277,8 +279,10 @@ def index() -> str:
         transcribe_models=TRANSCRIBE_MODELS,
         summary_models=SUMMARY_MODELS,
         language_options=LANGUAGE_OPTIONS,
-        default_model=DEFAULT_MODEL,
-        default_summary_model=DEFAULT_SUMMARY_MODEL,
+        default_model=POWERFUL_TRANSCRIBE_MODEL,
+        default_summary_model=POWERFUL_SUMMARY_MODEL,
+        powerful_transcribe_model=POWERFUL_TRANSCRIBE_MODEL,
+        powerful_summary_model=POWERFUL_SUMMARY_MODEL,
         default_max_chunk_seconds=MAX_CHUNK_SECONDS,
     )
 
@@ -314,8 +318,8 @@ def transcribe_api() -> Any:
     request_data = {
         "settings_file": request.form.get("settings_file")
         or str(BASE_DIR / ".setting.json"),
-        "model": request.form.get("model") or DEFAULT_MODEL,
-        "summary_model": request.form.get("summary_model") or DEFAULT_SUMMARY_MODEL,
+        "model": request.form.get("model") or POWERFUL_TRANSCRIBE_MODEL,
+        "summary_model": request.form.get("summary_model") or POWERFUL_SUMMARY_MODEL,
         "language": request.form.get("language") or None,
         "max_chunk_seconds": max_chunk_seconds,
         "generate_summary": _as_bool(request.form.get("generate_summary"), False),

@@ -15,11 +15,14 @@ const metaEl = document.getElementById("meta");
 const outputDirEl = document.getElementById("output-dir");
 const transcriptPathEl = document.getElementById("transcript-path");
 const summaryPathEl = document.getElementById("summary-path");
+const costPathEl = document.getElementById("cost-path");
+const costTotalEl = document.getElementById("cost-total");
 const downloadPanel = document.getElementById("download-panel");
 const downloadInputAudioEl = document.getElementById("download-input-audio");
 const downloadTranscriptTxtEl = document.getElementById("download-transcript-txt");
 const downloadTranscriptJsonEl = document.getElementById("download-transcript-json");
 const downloadSummaryTxtEl = document.getElementById("download-summary-txt");
+const downloadCostMdEl = document.getElementById("download-cost-md");
 
 const tabs = Array.from(document.querySelectorAll(".tab"));
 
@@ -55,12 +58,20 @@ function setDownloadLink(element, href, enabled) {
   element.classList.toggle("disabled", !enabled);
 }
 
+function formatUsd(value) {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return "N/A";
+  }
+  return `$${value.toFixed(6)}`;
+}
+
 function resetDownloads() {
   downloadPanel.classList.add("hidden");
   setDownloadLink(downloadInputAudioEl, "", false);
   setDownloadLink(downloadTranscriptTxtEl, "", false);
   setDownloadLink(downloadTranscriptJsonEl, "", false);
   setDownloadLink(downloadSummaryTxtEl, "", false);
+  setDownloadLink(downloadCostMdEl, "", false);
 }
 
 fileInput.addEventListener("change", () => {
@@ -190,12 +201,15 @@ form.addEventListener("submit", async (event) => {
     outputDirEl.textContent = result.output_dir || "";
     transcriptPathEl.textContent = result.transcript_path || "";
     summaryPathEl.textContent = result.summary_path || "Not generated";
+    costPathEl.textContent = result.cost_path || "";
+    costTotalEl.textContent = formatUsd(result.cost_estimate_usd_total);
 
     const downloadBase = `/api/jobs/${payload.job_id}/download`;
     setDownloadLink(downloadInputAudioEl, `${downloadBase}/input_audio`, true);
     setDownloadLink(downloadTranscriptTxtEl, `${downloadBase}/transcript_md`, true);
     setDownloadLink(downloadTranscriptJsonEl, `${downloadBase}/transcript_json`, true);
     setDownloadLink(downloadSummaryTxtEl, `${downloadBase}/summary_md`, Boolean(result.summary_path));
+    setDownloadLink(downloadCostMdEl, `${downloadBase}/cost_md`, Boolean(result.cost_path));
     downloadPanel.classList.remove("hidden");
 
     resultPanel.classList.remove("hidden");
