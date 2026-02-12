@@ -341,22 +341,51 @@ def format_timestamp(seconds: float) -> str:
     return f"{hours:02d}:{minutes:02d}:{secs:06.3f}"
 
 
-def write_transcript_text(path: Path, segments: List[NormalizedSegment], metadata: Dict[str, str]) -> None:
+def write_transcript_markdown(
+    path: Path,
+    segments: List[NormalizedSegment],
+    metadata: Dict[str, str],
+) -> None:
     lines = [
-        f"Source: {metadata['source']}",
-        f"Model: {metadata['model']}",
-        f"GeneratedUTC: {metadata['generated_utc']}",
+        "# Transcript",
+        "",
+        f"- **Source:** `{metadata['source']}`",
+        f"- **Model:** `{metadata['model']}`",
+        f"- **Generated (UTC):** `{metadata['generated_utc']}`",
+        f"- **Chunk Count:** `{metadata.get('chunk_count', 'N/A')}`",
+        "",
+        "---",
+        "",
+        "## Segments",
         "",
     ]
     if len(segments) == 0:
-        lines.append("(No transcript segments returned.)")
+        lines.append("_No transcript segments returned._")
     else:
         for segment in segments:
+            text = segment.text.strip().replace("\n", " ")
             lines.append(
-                f"[{format_timestamp(segment.start)} - {format_timestamp(segment.end)}] "
-                f"{segment.speaker}: {segment.text}"
+                f"- **[{format_timestamp(segment.start)} - {format_timestamp(segment.end)}] {segment.speaker}**"
             )
+            lines.append(f"  {text}")
+            lines.append("")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def write_summary_markdown(path: Path, summary_text: str, metadata: Dict[str, str]) -> None:
+    lines = [
+        "# Summary",
+        "",
+        f"- **Source:** `{metadata['source']}`",
+        f"- **Summary Model:** `{metadata['summary_model']}`",
+        f"- **Generated (UTC):** `{metadata['generated_utc']}`",
+        "",
+        "---",
+        "",
+        summary_text.strip(),
+        "",
+    ]
+    path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def import_openai_client():
@@ -581,14 +610,16 @@ def transcribe_mp3_file(
         )
         advance_progress(f"Transcribed chunk {index + 1}/{total_chunks}: {chunk.path.name}")
 
-    transcript_path = output_dir / f"{input_path.stem}.transcript.txt"
-    write_transcript_text(
+    generated_utc = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    transcript_path = output_dir / f"{input_path.stem}.transcript.md"
+    write_transcript_markdown(
         path=transcript_path,
         segments=all_segments,
         metadata={
             "source": input_path.name,
             "model": model,
-            "generated_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "generated_utc": generated_utc,
+            "chunk_count": str(total_chunks),
         },
     )
 
@@ -631,17 +662,25 @@ def transcribe_mp3_file(
             summary_prompt=summary_prompt,
             transcript_text=transcript_text,
         )
-        summary_path = output_dir / f"{input_path.stem}.summary.txt"
-        summary_path.write_text(summary_text + "\n", encoding="utf-8")
+        summary_path = output_dir / f"{input_path.stem}.summary.md"
+        write_summary_markdown(
+            path=summary_path,
+            summary_text=summary_text,
+            metadata={
+                "source": input_path.name,
+                "summary_model": summary_model,
+                "generated_utc": generated_utc,
+            },
+        )
 
     advance_progress("Finalizing outputs...",)
 
     emit(f"Output directory: {output_dir}", 1.0)
     emit(f"Copied input audio: {copied_audio}", 1.0)
-    emit(f"Transcript text: {transcript_path}", 1.0)
+    emit(f"Transcript markdown: {transcript_path}", 1.0)
     emit(f"Transcript json: {json_path}", 1.0)
     if summary_path is not None:
-        emit(f"Summary text: {summary_path}", 1.0)
+        emit(f"Summary markdown: {summary_path}", 1.0)
 
     return {
         "output_dir": str(output_dir),

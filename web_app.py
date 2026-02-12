@@ -190,8 +190,10 @@ def _artifact_entry(job: Dict[str, Any], artifact: str) -> tuple[str | None, str
 
     mapping = {
         "input_audio": "copied_audio",
+        "transcript_md": "transcript_path",
         "transcript_txt": "transcript_path",
         "transcript_json": "transcript_json_path",
+        "summary_md": "summary_path",
         "summary_txt": "summary_path",
     }
     key = mapping.get(artifact)

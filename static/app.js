@@ -193,9 +193,9 @@ form.addEventListener("submit", async (event) => {
 
     const downloadBase = `/api/jobs/${payload.job_id}/download`;
     setDownloadLink(downloadInputAudioEl, `${downloadBase}/input_audio`, true);
-    setDownloadLink(downloadTranscriptTxtEl, `${downloadBase}/transcript_txt`, true);
+    setDownloadLink(downloadTranscriptTxtEl, `${downloadBase}/transcript_md`, true);
     setDownloadLink(downloadTranscriptJsonEl, `${downloadBase}/transcript_json`, true);
-    setDownloadLink(downloadSummaryTxtEl, `${downloadBase}/summary_txt`, Boolean(result.summary_path));
+    setDownloadLink(downloadSummaryTxtEl, `${downloadBase}/summary_md`, Boolean(result.summary_path));
     downloadPanel.classList.remove("hidden");
 
     resultPanel.classList.remove("hidden");
