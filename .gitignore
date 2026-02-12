@@ -1,0 +1,7 @@
+.setting.json
+.DS_Store
+.venv/
+__pycache__/
+web_uploads/
+output-*/
+input/*.mp3

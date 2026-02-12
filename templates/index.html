@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vocal Lens | MP3 Transcriber</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  </head>
+  <body>
+    <div class="bg-orb bg-orb-one"></div>
+    <div class="bg-orb bg-orb-two"></div>
+
+    <main class="layout">
+      <header class="hero">
+        <p class="kicker">Audio Intelligence Workspace</p>
+        <h1>Vocal Lens</h1>
+        <p class="subtitle">
+          Upload an MP3, generate diarized transcription, and optionally get an AI summary in one run.
+        </p>
+      </header>
+
+      <section class="panel uploader">
+        <form id="transcribe-form">
+          <label class="dropzone" id="dropzone" for="audio-input">
+            <input id="audio-input" name="audio" type="file" accept="audio/mpeg,.mp3" required />
+            <span class="drop-title">Drop MP3 here or click to browse</span>
+            <span class="drop-subtitle" id="file-name">No file selected</span>
+          </label>
+
+          <div class="controls">
+            <label>
+              <span>Transcribe Model</span>
+              <select name="model">
+                {% for item in transcribe_models %}
+                <option value="{{ item }}" {% if item == default_model %}selected{% endif %}>{{ item }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              <span>Summary Model</span>
+              <select name="summary_model">
+                {% for item in summary_models %}
+                <option value="{{ item }}" {% if item == default_summary_model %}selected{% endif %}>{{ item }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label>
+              <span>Max Chunk Seconds</span>
+              <input name="max_chunk_seconds" type="number" min="30" value="{{ default_max_chunk_seconds }}" />
+            </label>
+            <label>
+              <span>Language</span>
+              <select name="language">
+                {% for code, label in language_options %}
+                <option value="{{ code }}" {% if code == 'en' %}selected{% endif %}>{{ label }} ({{ code }})</option>
+                {% endfor %}
+              </select>
+            </label>
+          </div>
+
+          <label class="toggle">
+            <input name="generate_summary" type="checkbox" checked />
+            <span>Generate AI summary</span>
+          </label>
+
+          <button id="submit-btn" type="submit">Transcribe Audio</button>
+          <div class="progress-shell">
+            <div class="progress-head">
+              <span id="progress-label">Progress</span>
+              <span id="progress-percent">0%</span>
+            </div>
+            <div class="progress-track">
+              <div id="progress-bar" class="progress-bar"></div>
+            </div>
+          </div>
+          <p id="status" class="status">Ready.</p>
+        </form>
+      </section>
+
+      <section id="result-panel" class="panel result hidden">
+        <div class="result-head">
+          <h2>Output</h2>
+          <p id="meta"></p>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active" data-tab="transcript" type="button">Transcript</button>
+          <button class="tab" data-tab="summary" type="button">Summary</button>
+        </div>
+
+        <pre id="transcript" class="output-block"></pre>
+        <pre id="summary" class="output-block hidden"></pre>
+
+        <div class="paths">
+          <p><strong>Output Directory:</strong> <span id="output-dir"></span></p>
+          <p><strong>Transcript File:</strong> <span id="transcript-path"></span></p>
+          <p><strong>Summary File:</strong> <span id="summary-path"></span></p>
+        </div>
+
+        <div id="download-panel" class="downloads hidden">
+          <a id="download-input-audio" class="download-btn" href="#" download>Download Input MP3</a>
+          <a id="download-transcript-txt" class="download-btn" href="#" download>Download Transcript TXT</a>
+          <a id="download-transcript-json" class="download-btn" href="#" download>Download Transcript JSON</a>
+          <a id="download-summary-txt" class="download-btn" href="#" download>Download Summary TXT</a>
+        </div>
+      </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+  </body>
+</html>
