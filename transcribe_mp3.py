@@ -118,6 +118,15 @@ def _first_non_empty_string(data: Dict[str, Any], names: List[str]) -> Optional[
     return None
 
 
+def _looks_like_placeholder_api_key(value: str) -> bool:
+    normalized = value.strip().upper()
+    return (
+        "REPLACE_ME" in normalized
+        or "YOUR_API_KEY" in normalized
+        or normalized in {"SK-REPLACE", "SK-REPLACE_ME"}
+    )
+
+
 def load_api_key_from_settings(settings: Dict[str, Any]) -> str:
     value = _first_non_empty_string(
         settings,
@@ -130,12 +139,24 @@ def load_api_key_from_settings(settings: Dict[str, Any]) -> str:
         ],
     )
     if value:
+        if _looks_like_placeholder_api_key(value):
+            die(
+                "Settings JSON contains a placeholder OPENAI_API_KEY "
+                "(for example sk-REPLACE_ME). "
+                "Update your runtime settings file with a real key."
+            )
         return value
 
     for raw in settings.values():
         if isinstance(raw, str):
             value = raw.strip()
             if value.startswith("sk-") or value.startswith("rk-"):
+                if _looks_like_placeholder_api_key(value):
+                    die(
+                        "Settings JSON contains a placeholder OPENAI_API_KEY "
+                        "(for example sk-REPLACE_ME). "
+                        "Update your runtime settings file with a real key."
+                    )
                 return value
     die("Could not parse OpenAI API key from settings JSON")
     raise AssertionError("unreachable")

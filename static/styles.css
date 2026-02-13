@@ -63,6 +63,33 @@ body {
   animation: rise 0.6s ease-out both;
 }
 
+.hero-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.6rem;
+}
+
+.hero-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  box-shadow: 0 8px 22px rgba(11, 114, 133, 0.3);
+}
+
+.hero-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(11, 114, 133, 0.24);
+  color: var(--ink-soft);
+  background: rgba(255, 255, 255, 0.75);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
 .kicker {
   margin: 0;
   font-size: 0.8rem;
@@ -306,6 +333,52 @@ select:focus {
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.83rem;
   line-height: 1.5;
+  user-select: text;
+}
+
+.copy-actions {
+  margin-top: 0.7rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.copy-btn {
+  border: 1px solid rgba(11, 114, 133, 0.25);
+  background: #f2fbfc;
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 0.48rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.copy-btn:hover {
+  background: #ffffff;
+}
+
+.cost-card {
+  margin-top: 0.8rem;
+  border: 1px solid rgba(11, 114, 133, 0.2);
+  border-radius: 14px;
+  background: linear-gradient(160deg, rgba(15, 163, 177, 0.11), rgba(255, 255, 255, 0.8));
+  padding: 0.7rem 0.8rem;
+}
+
+.cost-card h3 {
+  margin: 0 0 0.4rem;
+  font-size: 0.94rem;
+}
+
+.cost-card p {
+  margin: 0.2rem 0;
+  font-size: 0.84rem;
+}
+
+.cost-note {
+  color: var(--ink-soft);
+  font-style: italic;
 }
 
 .paths {
@@ -350,6 +423,11 @@ select:focus {
 .download-btn:hover {
   transform: translateY(-1px);
   background: #ffffff;
+}
+
+.download-btn.saving {
+  cursor: progress;
+  opacity: 0.72;
 }
 
 .download-btn.disabled {

@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vocal Lens | MP3 Transcriber</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='vocal-lens-icon.svg') }}" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -18,6 +19,10 @@
 
     <main class="layout">
       <header class="hero">
+        <div class="hero-brand">
+          <img class="hero-icon" src="{{ url_for('static', filename='vocal-lens-icon.svg') }}" alt="Vocal Lens icon" />
+          <span class="hero-chip">Vocal Lens</span>
+        </div>
         <p class="kicker">Audio Intelligence Workspace</p>
         <h1>Vocal Lens</h1>
         <p class="subtitle">
@@ -94,23 +99,35 @@
           <button class="tab" data-tab="summary" type="button">Summary</button>
         </div>
 
+        <div class="copy-actions">
+          <button id="copy-transcript-btn" class="copy-btn" type="button">Copy Transcript</button>
+          <button id="copy-summary-btn" class="copy-btn" type="button">Copy Summary</button>
+        </div>
+
         <pre id="transcript" class="output-block"></pre>
         <pre id="summary" class="output-block hidden"></pre>
+
+        <div class="cost-card">
+          <h3>Estimated Cost</h3>
+          <p><strong>Total:</strong> <span id="cost-total">N/A</span></p>
+          <p><strong>Transcription:</strong> <span id="cost-transcription">N/A</span></p>
+          <p><strong>Summary:</strong> <span id="cost-summary">N/A</span></p>
+          <p id="cost-partial-note" class="cost-note hidden">Some pricing inputs were unavailable, so this estimate may be partial.</p>
+        </div>
 
         <div class="paths">
           <p><strong>Output Directory:</strong> <span id="output-dir"></span></p>
           <p><strong>Transcript Markdown:</strong> <span id="transcript-path"></span></p>
           <p><strong>Summary Markdown:</strong> <span id="summary-path"></span></p>
           <p><strong>Cost Markdown:</strong> <span id="cost-path"></span></p>
-          <p><strong>Estimated Total Cost (USD):</strong> <span id="cost-total"></span></p>
         </div>
 
         <div id="download-panel" class="downloads hidden">
-          <a id="download-input-audio" class="download-btn" href="#" download>Download Input MP3</a>
-          <a id="download-transcript-txt" class="download-btn" href="#" download>Download Transcript Markdown</a>
-          <a id="download-transcript-json" class="download-btn" href="#" download>Download Transcript JSON</a>
-          <a id="download-summary-txt" class="download-btn" href="#" download>Download Summary Markdown</a>
-          <a id="download-cost-md" class="download-btn" href="#" download>Download Cost Markdown</a>
+          <a id="download-input-audio" class="download-btn" href="#" data-artifact="input_audio" download>Download Input MP3</a>
+          <a id="download-transcript-txt" class="download-btn" href="#" data-artifact="transcript_md" download>Download Transcript Markdown</a>
+          <a id="download-transcript-json" class="download-btn" href="#" data-artifact="transcript_json" download>Download Transcript JSON</a>
+          <a id="download-summary-txt" class="download-btn" href="#" data-artifact="summary_md" download>Download Summary Markdown</a>
+          <a id="download-cost-md" class="download-btn" href="#" data-artifact="cost_md" download>Download Cost Markdown</a>
         </div>
       </section>
     </main>

@@ -6,6 +6,7 @@ from __future__ import annotations
 import threading
 import time
 import uuid
+import sys
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
@@ -17,11 +18,34 @@ from transcribe_mp3 import (
     transcribe_mp3_file,
 )
 
-BASE_DIR = Path(__file__).resolve().parent
-UPLOAD_DIR = BASE_DIR / "web_uploads"
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+def _resource_base_dir() -> Path:
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parents[1] / "Resources"
+    return Path(__file__).resolve().parent
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
+
+BASE_DIR = _resource_base_dir()
+APP_SUPPORT_DIR = Path.home() / "Library" / "Application Support" / "VocalLens"
+OUTPUT_ROOT_DIR = Path.home() / "Documents" / "VocalLens"
+UPLOAD_DIR = APP_SUPPORT_DIR / "web_uploads"
+DEV_SETTINGS_PATH = BASE_DIR / ".setting.json"
+DEFAULT_SETTINGS_PATH = APP_SUPPORT_DIR / ".setting.json"
+SETTINGS_TEMPLATE_PATH = BASE_DIR / ".setting.example.json"
+
+for folder in (APP_SUPPORT_DIR, OUTPUT_ROOT_DIR, UPLOAD_DIR):
+    folder.mkdir(parents=True, exist_ok=True)
+
+if not DEFAULT_SETTINGS_PATH.exists() and SETTINGS_TEMPLATE_PATH.exists():
+    DEFAULT_SETTINGS_PATH.write_text(
+        SETTINGS_TEMPLATE_PATH.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+app = Flask(
+    __name__,
+    template_folder=str(BASE_DIR / "templates"),
+    static_folder=str(BASE_DIR / "static"),
+)
 app.config["MAX_CONTENT_LENGTH"] = 512 * 1024 * 1024
 
 POWERFUL_TRANSCRIBE_MODEL = "gpt-4o-transcribe-diarize"
@@ -210,11 +234,13 @@ def _artifact_entry(job: Dict[str, Any], artifact: str) -> tuple[str | None, str
 
 def _safe_path_from_result(path_text: str) -> Path:
     path = Path(path_text).resolve()
-    try:
-        path.relative_to(BASE_DIR)
-    except ValueError:
-        raise PermissionError("Artifact path is outside workspace.")
-    return path
+    for root in (OUTPUT_ROOT_DIR, APP_SUPPORT_DIR, BASE_DIR):
+        try:
+            path.relative_to(root)
+            return path
+        except ValueError:
+            continue
+    raise PermissionError("Artifact path is outside allowed directories.")
 
 
 def _run_transcription_job(
@@ -235,7 +261,7 @@ def _run_transcription_job(
         result = transcribe_mp3_file(
             input_mp3=str(upload_path),
             settings_file=request_data["settings_file"],
-            output_root=str(BASE_DIR),
+            output_root=str(OUTPUT_ROOT_DIR),
             model=request_data["model"],
             language=request_data["language"],
             max_chunk_seconds=request_data["max_chunk_seconds"],
@@ -317,7 +343,7 @@ def transcribe_api() -> Any:
 
     request_data = {
         "settings_file": request.form.get("settings_file")
-        or str(BASE_DIR / ".setting.json"),
+        or (str(DEV_SETTINGS_PATH) if DEV_SETTINGS_PATH.exists() else str(DEFAULT_SETTINGS_PATH)),
         "model": request.form.get("model") or POWERFUL_TRANSCRIBE_MODEL,
         "summary_model": request.form.get("summary_model") or POWERFUL_SUMMARY_MODEL,
         "language": request.form.get("language") or None,

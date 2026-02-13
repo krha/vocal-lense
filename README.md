@@ -27,6 +27,12 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Desktop build dependencies:
+
+```bash
+pip install -r requirements-desktop.txt
+```
+
 ## Configuration
 
 Create `/Users/krha/code/transcribe/.setting.json`:
@@ -41,6 +47,8 @@ Create `/Users/krha/code/transcribe/.setting.json`:
 Notes:
 - `.setting.json` is gitignored.
 - `SUMMARY_PROMPT` is used only when summary generation is enabled.
+- For the standalone macOS app, if no local `.setting.json` is found, a template is created at:
+  - `~/Library/Application Support/VocalLens/.setting.json`
 
 ## CLI Usage
 
@@ -83,6 +91,35 @@ UI includes:
 - Language selector
 - Live progress bar
 - Download buttons for generated files
+
+## Standalone macOS App (.app and .dmg)
+
+Build app bundle and DMG:
+
+```bash
+cd /Users/krha/code/transcribe
+./scripts/build_macos_app.sh
+```
+
+Generated artifacts:
+- `.app` bundle in `dist/`
+- DMG installer at `dist/Vocal-Lens.dmg`
+
+What the standalone app does:
+- Starts the local backend server internally
+- Opens a native window (webview) for the UI
+- Stores output under `~/Documents/VocalLens/`
+
+## Mac App Store Path
+
+This repo now includes the standalone app packaging foundation (`py2app` + native launcher), but App Store publishing still requires Apple-specific release steps:
+
+- Apple Developer account + app identifier
+- Code signing with distribution certificate
+- Sandbox entitlements and App Store compliance review
+- Notarization / App Store upload through Apple tooling
+
+The provided DMG flow is the direct install path; App Store submission is a separate signing/distribution pipeline.
 
 ## API Endpoints
 

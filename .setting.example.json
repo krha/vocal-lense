@@ -1,0 +1,4 @@
+{
+  "OPENAI_API_KEY": "sk-REPLACE_ME",
+  "SUMMARY_PROMPT": "Summarize the transcript with decisions, action items, risks, and open questions."
+}

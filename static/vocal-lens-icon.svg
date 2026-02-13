@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Vocal Lens icon">
+  <defs>
+    <linearGradient id="bg" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#0b7285" />
+      <stop offset="100%" stop-color="#0fa3b1" />
+    </linearGradient>
+    <linearGradient id="wave" x1="0%" x2="100%" y1="0%" y2="0%">
+      <stop offset="0%" stop-color="#f7fcfd" />
+      <stop offset="100%" stop-color="#dff7f9" />
+    </linearGradient>
+  </defs>
+
+  <rect width="256" height="256" rx="56" fill="url(#bg)" />
+  <circle cx="128" cy="128" r="82" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="10" />
+  <path d="M48 128h24l14-34 18 68 20-96 20 128 16-64 14 32h34" fill="none" stroke="url(#wave)" stroke-linecap="round" stroke-linejoin="round" stroke-width="12" />
+  <circle cx="196" cy="76" r="20" fill="#f4b942" />
+  <circle cx="196" cy="76" r="9" fill="#fff6d8" />
+</svg>
